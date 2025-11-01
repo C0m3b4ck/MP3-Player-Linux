@@ -1,4 +1,3 @@
-<img src="book2.png" class="logo" width="120"/>
 <img src="https://img.shields.io/github/downloads/C0m3b4ck/MP3-Player-Linux/total">
 
 # MP3 Player Linux
