@@ -6,7 +6,8 @@ A C++ MP3 player for Linux, intended for Tinycore Linux, with Polish langauge ve
 # Info
 Currently tested on C++23 on Ubuntu, compiled and tested using this g++ 14.2.0 command: 
 * g++ -o verXXX mpp_verXXX_lin.cpp && ./verB304
-The program shall also be tested on Tinycore Linux.
+
+<br>The program shall also be tested on Tinycore Linux.
 
 # Updates
 Will show screenshots showing the use of this player in my project.
