@@ -1,22 +1,21 @@
 <img src="book2.png" class="logo" width="120"/>
-<img src="https://img.shields.io/github/downloads/C0m3b4ck/LDGame/total">
+<img src="https://img.shields.io/github/downloads/C0m3b4ck/MP3-Player-Linux/total">
 
-# LDGame
-A jam game for Ludum Dare 58.
+# MP3 Player Linux
+A C++ MP3 player for Linux, intended for Tinycore Linux, with Polish langauge version.
+
+# Info
+Currently tested on C++23 on Ubuntu, compiled and tested using this g++ 14.2.0 command: 
+* g++ -o verXXX mpp_verXXX_lin.cpp && ./verB304
+The program shall also be tested on Tinycore Linux.
+
+# Updates
+Will show screenshots showing the use of this player in my project.
 
 ## Contributors  
-Started on October 4th, 2025 by C0m3b4ck and FilipKFK.
-
-## Downloads
-Will lead you to the packaged game on itch.io
-
-## Engine Info
-Made using Godot. Will be packaged with all of three settings (Compatibility, Mobile and Forward+).
-
-## For players
-Will have controls, version choice help etc.
+Started on November 1st, 2025 by C0m3b4ck and FilipKFK.
 
 ## Roadmap / Future Enhancements  
 As for now, none.
 
-If you have questions, feature requests or want to contribute, reach out to <a href="https://ldjam.com/users/martingonn/">**Martingonn**</a> and <a href=https://ldjam.com/users/fbnxk>**FBNXK**</a> on ldjam.com.
+If you have questions, feature requests or want to contribute, reach out to **C0m3b4ck**.
