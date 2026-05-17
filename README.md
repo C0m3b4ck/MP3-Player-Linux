@@ -13,7 +13,7 @@ Currently tested on C++23 on Ubuntu, compiled and tested using this g++ 14.2.0 c
 Will show screenshots showing the use of this player in my project.
 
 ## Contributors  
-Started on November 1st, 2025 by C0m3b4ck and FilipKFK.
+Started on November 1st, 2025 by C0m3b4ck.
 
 ## Roadmap / Future Enhancements  
 As for now, none.
