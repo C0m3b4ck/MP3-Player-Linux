@@ -11,12 +11,23 @@
 #include <unistd.h>
 #include <sys/select.h>
 #include <sys/wait.h>
+#include <signal.h>
+#include <poll.h>
 
 namespace fs = std::filesystem;
 
 enum class Language { EN, PL };
 
 Language language = Language::EN;
+
+termios g_orig_termios;
+volatile sig_atomic_t g_raw_active = 0;
+
+void handle_sigint(int) {
+    if (g_raw_active)
+        tcsetattr(STDIN_FILENO, TCSANOW, &g_orig_termios);
+    _exit(130);
+}
 
 void exit_program(int code = 0) {
     std::cout << (language == Language::PL ? "Zamykanie programu.\n" : "Exiting program.\n");
@@ -27,16 +38,19 @@ void enable_raw_mode(termios& orig_termios) {
     tcgetattr(STDIN_FILENO, &orig_termios);
     termios raw = orig_termios;
     raw.c_lflag &= ~(ICANON | ECHO);
-    raw.c_cc[VMIN] = 1;   // Wait for at least 1 char (blocking read)
+    raw.c_cc[VMIN] = 0;   // Non-blocking read (loop is poll()-driven)
     raw.c_cc[VTIME] = 0;  // No timeout
     tcsetattr(STDIN_FILENO, TCSANOW, &raw);
+    g_orig_termios = orig_termios;
+    g_raw_active = 1;
 }
 
 void disable_raw_mode(const termios& orig_termios) {
     tcsetattr(STDIN_FILENO, TCSANOW, &orig_termios);
+    g_raw_active = 0;
 }
 
-char getch_blocking() {
+char getch() {
     char c = 0;
     ssize_t n = read(STDIN_FILENO, &c, 1);
     if (n == 1) return c;
@@ -128,45 +142,54 @@ void play_file_interactive(const fs::path& file_path) {
 
         while (!quit) {
             int status;
-            pid_t result = waitpid(pid, &status, WNOHANG);
-            if (result == pid) break;
+            if (waitpid(pid, &status, WNOHANG) == pid) {
+                quit = true;
+                break;
+            }
 
-            char c = getch_blocking();
-            if (c) {
-                switch (c) {
-                    case 's':
-                    case ' ':
-                        paused = !paused;
-                        if (paused) {
-                            if (std::system("pkill -STOP mpg123") == 0)
-                                std::cout << (language == Language::PL ? "Pauza\n" : "[Paused]\n");
-                            else
-                                std::cout << (language == Language::PL ? "Nie udało się wstrzymać\n" : "[Pause failed]\n");
-                        } else {
-                            if (std::system("pkill -CONT mpg123") == 0)
-                                std::cout << (language == Language::PL ? "Wznowiono\n" : "[Resumed]\n");
-                            else
-                                std::cout << (language == Language::PL ? "Nie udało się wznowić\n" : "[Resume failed]\n");
-                        }
-                        break;
-                    case 'B':
-                    case 'b':
-                        volume_up();
-                        break;
-                    case '-':
-                        volume_down();
-                        break;
-                    case 'q':
-                        std::system("pkill mpg123");
-                        quit = true;
-                        break;
-                    case 'h':
-                        print_playback_help();
-                        break;
+            pollfd pfd = { STDIN_FILENO, POLLIN, 0 };
+            if (poll(&pfd, 1, 100) > 0 && (pfd.revents & POLLIN)) {
+                char c = getch();
+                if (c) {
+                    switch (c) {
+                        case 's':
+                        case ' ':
+                            paused = !paused;
+                            if (paused) {
+                                if (kill(pid, SIGSTOP) == 0)
+                                    std::cout << (language == Language::PL ? "Pauza\n" : "[Paused]\n");
+                                else
+                                    std::cout << (language == Language::PL ? "Nie udało się wstrzymać\n" : "[Pause failed]\n");
+                            } else {
+                                if (kill(pid, SIGCONT) == 0)
+                                    std::cout << (language == Language::PL ? "Wznowiono\n" : "[Resumed]\n");
+                                else
+                                    std::cout << (language == Language::PL ? "Nie udało się wznowić\n" : "[Resume failed]\n");
+                            }
+                            break;
+                        case 'B':
+                        case 'b':
+                            volume_up();
+                            break;
+                        case '-':
+                            volume_down();
+                            break;
+                        case 'q':
+                            if (paused) kill(pid, SIGCONT);
+                            kill(pid, SIGTERM);
+                            waitpid(pid, &status, 0);
+                            quit = true;
+                            break;
+                        case 'h':
+                            print_playback_help();
+                            break;
+                    }
                 }
             }
         }
 
+        int status;
+        waitpid(pid, &status, WNOHANG);
         disable_raw_mode(orig_termios);
     } else {
         std::cerr << (language == Language::PL ? "Błąd: nie udało się wykonać fork.\n" : "Error: failed to fork playback process.\n");
@@ -208,6 +231,8 @@ Sterowanie podczas odtwarzania:
 }
 
 int main() {
+    signal(SIGINT, handle_sigint);
+
     // Ask user for language on startup
     std::cout << "Select language / Wybierz Język / (EN/pl): ";
     std::string lang_input;
@@ -216,6 +241,13 @@ int main() {
         language = Language::PL;
     } else {
         language = Language::EN;
+    }
+
+    if (std::system("command -v mpg123 > /dev/null 2>&1") != 0) {
+        std::cerr << (language == Language::PL ?
+            "Nie znaleziono mpg123. Zainstaluj mpg123, np. sudo apt install mpg123.\n" :
+            "mpg123 not found. Please install mpg123 (e.g. sudo apt install mpg123).\n");
+        exit_program(1);
     }
 
     std::string mp3_dir;
